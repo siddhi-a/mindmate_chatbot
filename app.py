@@ -3,23 +3,10 @@ import random
 from textblob import TextBlob
 from datetime import datetime
 import csv
-
-import streamlit as st
 import openai
 
-# Set API key securely from Streamlit Secrets
+# ✅ Use your own OpenAI API key from Streamlit secrets
 openai.api_key = st.secrets["OPENAI_API_KEY"]
-
-
-
-
-# Try loading from secrets, else fallback to manual input
-api_key = st.secrets.get("openai", {}).get("openai_key", "")
-if not api_key:
-    api_key = st.text_input("🔐 Enter your OpenAI API key (optional)", type="password")
-
-if api_key:
-    openai.api_key = api_key
 
 # Mood & emoji mapping
 mood_emojis = {
@@ -65,7 +52,7 @@ def analyze_mood(text):
     else:
         return "neutral"
 
-def generate_response(text, use_gpt=False):
+def generate_response(text):
     mood = analyze_mood(text)
     emoji = mood_emojis.get(mood, "🙂")
 
@@ -78,29 +65,27 @@ def generate_response(text, use_gpt=False):
             "_Please speak to someone — you matter deeply._"
         )
 
-    if use_gpt and api_key:
-        try:
-            response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "You are a compassionate mental wellness assistant."},
-                    {"role": "user", "content": text}
-                ]
-            )
-            return emoji, response['choices'][0]['message']['content']
-        except Exception:
-            return emoji, "Oops! GPT failed. Reverting to basic response."
-
-    # Fallback response
-    suggestion = random.choice(self_care_tips.get(mood, self_care_tips["neutral"]))
-    templates = {
-        "positive": f"That's wonderful to hear! {emoji} Keep holding on to the joy you feel.",
-        "sad": f"I'm sorry you're feeling down. {emoji} Maybe try this: {suggestion}",
-        "anxious": f"It's okay to feel anxious. {emoji} Try this to feel grounded: {suggestion}",
-        "angry": f"That sounds tough. {emoji} Consider doing this: {suggestion}",
-        "neutral": f"Thanks for sharing. {emoji} Here's something for today: {suggestion}"
-    }
-    return emoji, templates.get(mood, "I'm here for you.")
+    # GPT-powered response
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a compassionate mental wellness assistant."},
+                {"role": "user", "content": text}
+            ]
+        )
+        return emoji, response['choices'][0]['message']['content']
+    except Exception:
+        # Fallback response
+        suggestion = random.choice(self_care_tips.get(mood, self_care_tips["neutral"]))
+        templates = {
+            "positive": f"That's wonderful to hear! {emoji} Keep holding on to the joy you feel.",
+            "sad": f"I'm sorry you're feeling down. {emoji} Maybe try this: {suggestion}",
+            "anxious": f"It's okay to feel anxious. {emoji} Try this to feel grounded: {suggestion}",
+            "angry": f"That sounds tough. {emoji} Consider doing this: {suggestion}",
+            "neutral": f"Thanks for sharing. {emoji} Here's something for today: {suggestion}"
+        }
+        return emoji, templates.get(mood, "I'm here for you.")
 
 def log_interaction(user_input, mood):
     with open("chat_log.csv", "a", newline='', encoding="utf-8") as f:
@@ -116,12 +101,11 @@ st.write("Hi! I'm MindMate. Share how you're feeling today.")
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-use_gpt = st.toggle("Use GPT for replies (optional, needs API key)", value=False)
 user_input = st.text_input("Your thoughts", "", key="user_input")
 
 if st.button("Send") and user_input.strip():
     mood = analyze_mood(user_input)
-    emoji, response = generate_response(user_input, use_gpt)
+    emoji, response = generate_response(user_input)
     st.session_state.messages.append(("You", user_input))
     st.session_state.messages.append((f"MindMate {emoji}", response))
     log_interaction(user_input, mood)
