@@ -4,12 +4,12 @@ from textblob import TextBlob
 from datetime import datetime
 import csv
 
-# Optional GPT support
-import openai
 import streamlit as st
+import openai
 
-# Load API key from Streamlit secrets
+# Set API key securely from Streamlit Secrets
 openai.api_key = st.secrets["OPENAI_API_KEY"]
+
 
 
 
